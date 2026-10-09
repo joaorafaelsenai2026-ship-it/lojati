@@ -1,0 +1,225 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loja TI | Cadastro de Clientes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <main class="container">
+
+        <header class="cabecalho">
+            <div class="logo">TI</div>
+            <div>
+                <h1>Cadastro de Clientes</h1>
+                <p>Cadastre e gerencie seus clientes.</p>
+            </div>
+        </header>
+
+        <section class="cartao">
+            <h2>Novo cliente</h2>
+            <p class="descricao">Preencha todos os campos abaixo.</p>
+
+            <form id="formCliente">
+
+                <div class="campo">
+                    <label for="nome">Nome completo</label>
+                    <input
+                        type="text"
+                        id="nome"
+                        name="nome"
+                        placeholder="Digite seu nome completo"
+                        required
+                    >
+                </div>
+
+                <div class="campo">
+                    <label for="email">E-mail</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="exemplo@email.com"
+                        required
+                    >
+                </div>
+
+                <div class="campo">
+                    <label for="telefone">Telefone</label>
+                    <input
+                        type="tel"
+                        id="telefone"
+                        name="telefone"
+                        placeholder="(11) 99999-9999"
+                        required
+                    >
+                </div>
+
+                <div class="campo">
+                    <label for="endereco">Endereço</label>
+                    <input
+                        type="text"
+                        id="endereco"
+                        name="endereco"
+                        placeholder="Rua, número e bairro"
+                        required
+                    >
+                </div>
+
+                <button type="submit">Cadastrar cliente</button>
+
+                <p id="mensagem" role="status"></p>
+            </form>
+        </section>
+
+        <section class="cartao clientes">
+            <h2>Clientes cadastrados</h2>
+            <p class="descricao">
+                Lista de clientes registrados no sistema.
+            </p>
+
+            <ul id="listaClientes">
+                <li>Carregando clientes...</li>
+            </ul>
+
+            <button type="button" id="atualizar">
+                Atualizar lista
+            </button>
+        </section>
+
+        <footer>
+            <p>Loja TI &copy; 2026 — Sistema de clientes</p>
+        </footer>
+
+    </main>
+
+    <script>
+        const API = "../back/index.php?rota=clientes";
+
+        const formulario = document.getElementById("formCliente");
+        const mensagem = document.getElementById("mensagem");
+        const lista = document.getElementById("listaClientes");
+        const botaoAtualizar = document.getElementById("atualizar");
+
+        async function carregarClientes() {
+            lista.replaceChildren();
+
+            const carregando = document.createElement("li");
+            carregando.textContent = "Carregando clientes...";
+            lista.appendChild(carregando);
+
+            try {
+                const resposta = await fetch(API);
+                const texto = await resposta.text();
+
+                let clientes;
+
+                try {
+                    clientes = JSON.parse(texto);
+                } catch {
+                    console.error("Resposta do PHP:", texto);
+                    throw new Error(
+                        "Resposta inválida do servidor. Verifique o PHP."
+                    );
+                }
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        clientes.erro || "Erro ao carregar clientes."
+                    );
+                }
+
+                if (!Array.isArray(clientes) || clientes.length === 0) {
+                    lista.replaceChildren();
+
+                    const item = document.createElement("li");
+                    item.textContent = "Nenhum cliente cadastrado.";
+                    lista.appendChild(item);
+                    return;
+                }
+
+                lista.replaceChildren();
+
+                clientes.forEach(cliente => {
+                    const item = document.createElement("li");
+
+                    const nome = cliente.nome ?? cliente.Nome ?? "";
+                    const email = cliente.email ?? cliente.Email ?? "";
+                    const telefone = cliente.telefone ?? cliente.Telefone ?? "";
+                    const endereco = cliente.endereco ?? cliente.Endereco ?? "";
+
+                    item.textContent =
+                        `${nome} — ${email} — ${telefone} — ${endereco}`;
+
+                    lista.appendChild(item);
+                });
+
+            } catch (erro) {
+                lista.replaceChildren();
+
+                const item = document.createElement("li");
+                item.textContent = erro.message;
+                lista.appendChild(item);
+
+                console.error(erro);
+            }
+        }
+
+        formulario.addEventListener("submit", async function(evento) {
+            evento.preventDefault();
+
+            mensagem.textContent = "Cadastrando...";
+            mensagem.className = "";
+
+            try {
+                const resposta = await fetch(API, {
+                    method: "POST",
+                    body: new FormData(formulario)
+                });
+
+                const texto = await resposta.text();
+
+                let dados;
+
+                try {
+                    dados = JSON.parse(texto);
+                } catch {
+                    console.error("Resposta do PHP:", texto);
+                    throw new Error(
+                        "Resposta inválida do servidor. Verifique o PHP."
+                    );
+                }
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        dados.erro || "Não foi possível cadastrar o cliente."
+                    );
+                }
+
+                mensagem.textContent =
+                    dados.mensagem || "Cliente cadastrado com sucesso!";
+
+                mensagem.className = "sucesso";
+
+                formulario.reset();
+
+                await carregarClientes();
+
+            } catch (erro) {
+                mensagem.textContent = erro.message;
+                mensagem.className = "erro";
+
+                console.error(erro);
+            }
+        });
+
+        botaoAtualizar.addEventListener("click", carregarClientes);
+
+        carregarClientes();
+    </script>
+
+</body>
+</html>
